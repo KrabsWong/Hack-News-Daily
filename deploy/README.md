@@ -1,67 +1,126 @@
-# 腾讯云轻量服务器部署指南
+# 部署指南
 
-## 架构
+本项目不是常驻服务。`npm start` 和 Docker 容器都会执行一次每日导出，然后退出；定时运行交给 `cron`。
 
-```
-腾讯云服务器 (Docker)
-├── Node.js 主服务
-├── Jina.ai 爬虫 (外部 API)
-├── DeepSeek LLM (外部 API)
-└── Cron 定时执行
+推荐配置：2 核 2GB 以上服务器。下面示例统一使用 `/opt/hackernews-daily` 作为项目目录，如使用其他目录，请同步替换命令里的路径。
 
-内存占用: ~200MB
-推荐配置: 2核2GB
-```
+## 部署方式
 
-## 快速部署
+- 原生 Node.js + cron：适合不使用 Docker 的服务器。
+- Docker + cron：适合希望隔离运行环境的服务器。
 
-### 1. 本地构建
+## 1. 准备环境变量
+
+在项目根目录创建 `.env`：
 
 ```bash
+cd /opt/hackernews-daily
+cp deploy/.env.example .env
+vi .env
+```
+
+先手动执行一次，确认 API Key 和目标仓库配置正确，再配置定时任务。
+
+## 2. 原生 Node.js 部署
+
+服务器需要 Node.js 20+ 和 npm。
+
+```bash
+cd /opt/hackernews-daily
+npm ci
+npm run build
+npm start
+```
+
+如果本地开发机和服务器不是同一台机器，可以把仓库上传或 `git clone` 到 `/opt/hackernews-daily` 后再执行上述命令。
+
+## 3. Docker 部署
+
+Dockerfile 只复制已经编译好的 `dist/`，所以构建镜像前必须先编译。
+
+```bash
+cd /opt/hackernews-daily
+npm ci
 npm run build
 docker build -f deploy/Dockerfile -t hackernews-daily:latest .
-```
-
-### 2. 配置环境变量
-
-```bash
-cp deploy/.env.example deploy/.env
-vi deploy/.env
-```
-
-### 3. 上传到服务器
-
-```bash
-docker save hackernews-daily:latest | gzip > /tmp/hackernews-daily.tar.gz
-scp /tmp/hackernews-daily.tar.gz root@your-ip:/tmp/
-scp deploy/.env root@your-ip:/opt/hackernews-daily/
-```
-
-### 4. 服务器部署
-
-```bash
-ssh root@your-ip
-
-# 安装 Docker
-curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
-systemctl start docker && systemctl enable docker
-
-# 加载镜像
-mkdir -p /opt/hackernews-daily
-cd /opt/hackernews-daily
-docker load < /tmp/hackernews-daily.tar.gz
 
 # 测试执行
-docker run --rm --env-file .env hackernews-daily
+docker run --rm --env-file .env hackernews-daily:latest
 ```
 
-### 5. 配置定时任务
+也可以使用 Docker Compose 执行一次任务：
+
+```bash
+docker compose -f deploy/docker-compose.yml run --rm hackernews-daily
+```
+
+## 4. 配置 cron 定时任务
+
+先创建日志目录。cron 的重定向目标目录不存在时，shell 会在启动任务前失败，脚本本身不会执行。
+
+```bash
+mkdir -p /opt/hackernews-daily/logs
+touch /opt/hackernews-daily/logs/hackernews-daily.log
+```
+
+确认命令路径，cron 不一定加载交互式 shell 的 `PATH`：
+
+```bash
+command -v npm
+command -v node
+command -v docker
+```
+
+编辑当前用户的 crontab：
 
 ```bash
 crontab -e
+```
 
-# 每天早晨 8 点执行
-0 8 * * * cd /opt/hackernews-daily && docker run --rm --env-file .env hackernews-daily >> /var/log/hackernews-daily.log 2>&1
+如果 Node.js 通过 nvs、nvm 等用户级工具安装，建议在 crontab 顶部显式设置包含 `node` 和 `npm` 的 `PATH`，否则 cron 里可能找不到 `node`：
+
+```cron
+PATH=/path/to/node-bin:/usr/local/bin:/usr/bin:/bin
+```
+
+也可以直接使用 `command -v npm` 输出的绝对路径，例如 `/home/ubuntu/.nvs/default/bin/npm`。
+
+原生 Node.js 示例，每天早晨 8 点执行：
+
+```cron
+0 8 * * * mkdir -p /opt/hackernews-daily/logs && cd /opt/hackernews-daily && /usr/local/bin/npm start >> /opt/hackernews-daily/logs/hackernews-daily.log 2>&1
+```
+
+Docker 示例：
+
+```cron
+0 8 * * * mkdir -p /opt/hackernews-daily/logs && cd /opt/hackernews-daily && /usr/bin/docker run --rm --env-file .env hackernews-daily:latest >> /opt/hackernews-daily/logs/hackernews-daily.log 2>&1
+```
+
+如果 `command -v npm` 或 `command -v docker` 输出的路径不同，请使用实际路径替换示例里的 `/usr/local/bin/npm` 或 `/usr/bin/docker`。
+
+查看已安装任务：
+
+```bash
+crontab -l
+```
+
+## 5. 手动验证 cron 命令
+
+验证时直接手动执行 crontab 里的同一条命令，并查看同一个日志文件。
+
+原生 Node.js：
+
+```bash
+mkdir -p /opt/hackernews-daily/logs && cd /opt/hackernews-daily && /usr/local/bin/npm start >> /opt/hackernews-daily/logs/hackernews-daily.log 2>&1
+tail -f /opt/hackernews-daily/logs/hackernews-daily.log
+```
+
+Docker：
+
+```bash
+mkdir -p /opt/hackernews-daily/logs && cd /opt/hackernews-daily && /usr/bin/docker run --rm --env-file .env hackernews-daily:latest >> /opt/hackernews-daily/logs/hackernews-daily.log 2>&1
+tail -f /opt/hackernews-daily/logs/hackernews-daily.log
 ```
 
 ## 环境变量
@@ -87,25 +146,37 @@ crontab -e
 
 ```bash
 # 查看日志
-tail -f /var/log/hackernews-daily.log
+tail -f /opt/hackernews-daily/logs/hackernews-daily.log
 
-# 手动执行测试
-docker run --rm --env-file .env hackernews-daily
+# 手动执行测试（原生 Node.js）
+npm start
 
-# 检查环境变量
-docker run --rm --env-file .env hackernews-daily env | grep API_KEY
+# 手动执行测试（Docker）
+docker run --rm --env-file .env hackernews-daily:latest
+
+# 检查 cron 是否写入
+crontab -l
 ```
 
 ## 更新服务
 
-```bash
-# 本地重新构建
-docker build -f deploy/Dockerfile -t hackernews-daily:latest .
-docker save hackernews-daily:latest | gzip > /tmp/hackernews-daily.tar.gz
-scp /tmp/hackernews-daily.tar.gz root@your-ip:/tmp/
+### 原生 Node.js
 
-# 服务器更新
-ssh root@your-ip
+```bash
 cd /opt/hackernews-daily
-docker load < /tmp/hackernews-daily.tar.gz
+git pull
+npm ci
+npm run build
+npm start
+```
+
+### Docker
+
+```bash
+cd /opt/hackernews-daily
+git pull
+npm ci
+npm run build
+docker build -f deploy/Dockerfile -t hackernews-daily:latest .
+docker run --rm --env-file .env hackernews-daily:latest
 ```

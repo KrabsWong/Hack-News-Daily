@@ -201,7 +201,8 @@ async function publishToTelegram(
     throw new Error('Telegram 配置缺失');
   }
 
-  const text = `📰 <b>HackerNews Daily - ${dateStr}</b>\n\n共 ${stories.length} 篇文章\n\n查看详情: https://github.com/${process.env.TARGET_REPO}/blob/main/_posts/${dateStr}-daily.md`;
+  const targetBranch = process.env.TARGET_BRANCH || 'main';
+  const text = `📰 <b>HackerNews Daily - ${dateStr}</b>\n\n共 ${stories.length} 篇文章\n\n查看详情: https://github.com/${process.env.TARGET_REPO}/blob/${targetBranch}/_posts/${dateStr}-daily.md`;
 
   const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: 'POST',

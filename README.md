@@ -55,22 +55,32 @@ npm run build
 npm start
 ```
 
-## 部署到腾讯云
+## 部署
 
 详见 [deploy/README.md](deploy/README.md)
 
-### 快速部署
+支持两种方式：
+
+- 原生 Node.js + cron：不需要 Docker。
+- Docker + cron：适合隔离运行环境。
+
+### 原生 Node.js
 
 ```bash
-# 构建 Docker 镜像
-docker build -f deploy/Dockerfile -t hackernews-daily .
+cp deploy/.env.example .env
+npm ci
+npm run build
+npm start
+```
 
-# 运行
+### Docker
+
+```bash
+cp deploy/.env.example .env
+npm run build
+docker build -f deploy/Dockerfile -t hackernews-daily .
 docker run --rm \
-  -e JINA_API_KEY=xxx \
-  -e LLM_DEEPSEEK_API_KEY=xxx \
-  -e GITHUB_TOKEN=xxx \
-  -e TARGET_REPO=xxx \
+  --env-file .env \
   hackernews-daily
 ```
 
