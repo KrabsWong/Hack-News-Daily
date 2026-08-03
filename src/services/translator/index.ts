@@ -10,7 +10,44 @@ export interface TranslatorConfig {
 }
 
 export const NO_EXTERNAL_LINK_DESCRIPTION = '无法获取文章内容：该 Hacker News 帖子没有外链地址。';
-export const EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION = '无法获取文章内容：DeepSeek 未能读取该外链。';
+export const EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION = '无法获取文章内容：该外链无法访问或没有可用正文。';
+
+const PROCESS_NARRATION_PATTERNS = [
+  /(?:通过|使用|调用|借助).*(?:DeepSeek|Web\s*Search|网页搜索|搜索工具|工具调用).*(?:读取|访问|搜索|检索|确认|获取|生成)/i,
+  /(?:DeepSeek|Web\s*Search|网页搜索|搜索工具|工具调用).*(?:已|成功|完成|读取|访问|搜索|检索|确认|获取|生成)/i,
+  /^(?:我|我们|模型|助手).*(?:读取|访问|打开|搜索|检索|确认|获取|调用|生成|撰写|输出|摘要|总结)/,
+  /^(?:现在|接下来|随后).*(?:生成|整理|撰写|输出|摘要|总结)/,
+  /^(?:已经|已|成功).*(?:读取|访问|打开|搜索|检索|确认|获取)/,
+  /^(?:以下|下面)(?:是|为).*(?:摘要|总结)/,
+  /^(?:摘要|总结)(?:需|应|应该|需要)/,
+];
+
+function cleanSummaryText(rawText: string): string {
+  let text = rawText
+    .trim()
+    .replace(/^```(?:text)?\s*/i, '')
+    .replace(/\s*```$/, '');
+
+  const markedSummary = text.match(/(?:^|\n)\s*(?:FINAL_)?SUMMARY\s*[:：]\s*([\s\S]+)$/i);
+  if (markedSummary) {
+    text = markedSummary[1];
+  }
+
+  const paragraphs = text
+    .split(/\n+/)
+    .map(paragraph => paragraph
+      .split(/(?<=[。！？!?])\s*/u)
+      .map(sentence => sentence.trim())
+      .filter(sentence => sentence && !PROCESS_NARRATION_PATTERNS.some(pattern => pattern.test(sentence)))
+      .join('')
+    )
+    .filter(Boolean);
+
+  return paragraphs
+    .join('\n\n')
+    .replace(/^(?:文章|内容)?(?:摘要|总结)\s*[:：]\s*/, '')
+    .trim();
+}
 
 export class Translator {
   private provider: DeepSeekProvider | null = null;
@@ -80,7 +117,8 @@ export class Translator {
           article.title,
           maxLength
         );
-        results.push(summary || EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION);
+        const cleanedSummary = summary ? cleanSummaryText(summary) : '';
+        results.push(cleanedSummary || EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION);
       } catch (error) {
         console.warn(`  ⚠️  外链读取失败: ${error}`);
         results.push(EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION);
@@ -116,12 +154,13 @@ export class Translator {
         const response = await this.provider.chatCompletion([
           {
             role: 'system',
-            content: `你是评论摘要助手。请用中文总结评论核心观点，控制在${maxLength}字以内。只返回摘要内容。`,
+            content: `你是中文编辑。请用2至4句自然、客观的中文直接归纳评论中的观点和分歧，控制在${maxLength}字以内。不要描述总结过程，不使用“评论主要围绕”“核心观点是”“摘要需要”等套话，只返回可直接展示的正文。`,
           },
           { role: 'user', content: comments.substring(0, 3000) },
         ], 0.3);
 
-        results.push(response.content.trim());
+        const cleanedSummary = cleanSummaryText(response.content);
+        results.push(cleanedSummary || null);
       } catch (error) {
         console.warn(`  ⚠️  评论摘要失败: ${error}`);
         results.push(null);
