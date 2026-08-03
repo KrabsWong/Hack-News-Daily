@@ -28,6 +28,7 @@ npm run typecheck # 类型检查
 | `LLM_DEEPSEEK_API_KEY` | ✅ | DeepSeek API Key（外链读取、翻译和摘要） |
 | `GITHUB_TOKEN` | ✅ | GitHub Token (repo 权限) |
 | `TARGET_REPO` | ✅ | 目标仓库 (owner/repo) |
+| `HN_TARGET_DATE` | ❌ | 指定补跑日期 (YYYY-MM-DD) |
 | `TELEGRAM_ENABLED` | ❌ | 是否启用 Telegram |
 | `TELEGRAM_BOT_TOKEN` | ❌ | Telegram Bot Token |
 | `TELEGRAM_CHANNEL_ID` | ❌ | Telegram Channel ID |

@@ -37,6 +37,7 @@ TELEGRAM_CHANNEL_ID=@your-channel
 # 可选配置
 HN_STORY_LIMIT=30
 SUMMARY_MAX_LENGTH=300
+# HN_TARGET_DATE=2026-08-01
 ```
 
 ### 3. 本地运行
@@ -52,6 +53,15 @@ HN_STORY_LIMIT=1 npm run preview
 ```
 
 去掉 `HN_STORY_LIMIT=1` 即按 `.env` 中的配置数量生成完整预览。
+
+补跑指定日期（UTC）时，可临时设置 `HN_TARGET_DATE`：
+
+```bash
+HN_TARGET_DATE=2026-08-01 HN_STORY_LIMIT=1 npm run preview
+HN_TARGET_DATE=2026-08-01 npm start
+```
+
+指定日期会同时用于 HN 数据范围和 Markdown/发布文件日期。日常定时任务不要在 `.env` 中长期设置该变量，否则每天都会重复处理同一天的数据。
 
 ### 4. 编译
 

@@ -16,7 +16,7 @@ import {
   translator,
 } from '../services/translator';
 import { generateMarkdownContent } from '../services/markdownExporter';
-import { formatDateForDisplay, getPreviousDayBoundaries } from '../utils/date';
+import { formatDateForDisplay, getDayBoundaries, getPreviousDayBoundaries } from '../utils/date';
 import type { ProcessedStory } from '../types';
 
 const STORY_LIMIT = parseInt(process.env.HN_STORY_LIMIT || '30', 10);
@@ -26,6 +26,7 @@ export interface DailyExportOutput {
   processedStories: ProcessedStory[];
   markdown: string;
   date: string;
+  sourceDate: string;
   contentSuccess: number;
 }
 
@@ -36,7 +37,12 @@ export async function generateDailyExport(
 ): Promise<DailyExportOutput | null> {
   // 1. 获取文章列表
   console.log('\n[1/3] 📥 获取 HackerNews 文章...');
-  const { start, end } = getPreviousDayBoundaries();
+  const targetDate = process.env.HN_TARGET_DATE?.trim();
+  const { start, end } = targetDate
+    ? getDayBoundaries(targetDate)
+    : getPreviousDayBoundaries();
+  const sourceDate = targetDate || formatDateForDisplay(new Date(start * 1000));
+  console.log(`  数据日期: ${sourceDate} (UTC)`);
   const stories = await fetchTopStoriesByScore(storyLimit, start, end);
   console.log(`✓ 获取 ${stories.length} 篇文章`);
 
@@ -86,12 +92,14 @@ export async function generateDailyExport(
     commentSummary: commentSummaries[i] || null,
   }));
 
-  const date = formatDateForDisplay(new Date());
+  const date = targetDate || formatDateForDisplay(new Date());
+  const markdownDate = new Date(`${date}T00:00:00.000Z`);
 
   return {
     processedStories,
-    markdown: generateMarkdownContent(processedStories, new Date()),
+    markdown: generateMarkdownContent(processedStories, markdownDate),
     date,
+    sourceDate,
     contentSuccess,
   };
 }
@@ -125,7 +133,7 @@ async function main() {
       return;
     }
 
-    const { processedStories, markdown, date, contentSuccess } = output;
+    const { processedStories, markdown, date, sourceDate, contentSuccess } = output;
 
     console.log('\n[4/4] 📝 发布...');
 
@@ -153,6 +161,7 @@ async function main() {
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     console.log('\n' + '='.repeat(60));
     console.log(`✅ 完成！耗时: ${duration}s`);
+    console.log(`   数据日期: ${sourceDate} (UTC)`);
     console.log(`   文章: ${processedStories.length} 篇`);
     console.log(`   外链内容: ${contentSuccess}/${processedStories.length}`);
     console.log('='.repeat(60));

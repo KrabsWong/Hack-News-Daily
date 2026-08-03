@@ -32,7 +32,7 @@ export async function fetchTopStoriesByScore(
   startTime: number,
   endTime: number
 ): Promise<Story[]> {
-  const filters = `created_at_i>${startTime},created_at_i<${endTime}`;
+  const filters = `created_at_i>=${startTime},created_at_i<${endTime}`;
   
   const params = new URLSearchParams({
     tags: 'story',

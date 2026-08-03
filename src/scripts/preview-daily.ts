@@ -33,6 +33,8 @@ async function main(): Promise<void> {
 
   console.log('='.repeat(60));
   console.log(`✅ 预览完成：${output.processedStories.length} 篇文章`);
+  console.log(`   数据日期：${output.sourceDate} (UTC)`);
+  console.log(`   输出日期：${output.date}`);
   console.log(`   成功读取外链：${output.contentSuccess}/${output.processedStories.length}`);
   console.log('   未调用 GitHub 或 Telegram');
   console.log('='.repeat(60));

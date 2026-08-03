@@ -131,6 +131,7 @@ tail -f /opt/hackernews-daily/logs/hackernews-daily.log
 | `GITHUB_TOKEN` | ✅ | GitHub Personal Access Token |
 | `TARGET_REPO` | ✅ | 目标仓库 (owner/repo) |
 | `TARGET_BRANCH` | ❌ | 分支 (默认 main) |
+| `HN_TARGET_DATE` | ❌ | 补跑日期，格式为 YYYY-MM-DD；日常任务不要长期设置 |
 | `TELEGRAM_ENABLED` | ❌ | 是否启用 Telegram |
 | `TELEGRAM_BOT_TOKEN` | ❌ | Telegram Bot Token |
 | `TELEGRAM_CHANNEL_ID` | ❌ | Telegram Channel ID |
