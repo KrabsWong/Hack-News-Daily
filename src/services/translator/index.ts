@@ -7,14 +7,16 @@ import type { ChatMessage } from '../../types';
 
 export interface TranslatorConfig {
   apiKey: string;
-  model?: string;
 }
+
+export const NO_EXTERNAL_LINK_DESCRIPTION = '无法获取文章内容：该 Hacker News 帖子没有外链地址。';
+export const EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION = '无法获取文章内容：DeepSeek 未能读取该外链。';
 
 export class Translator {
   private provider: DeepSeekProvider | null = null;
 
   init(config: TranslatorConfig): void {
-    this.provider = new DeepSeekProvider(config.apiKey, config.model);
+    this.provider = new DeepSeekProvider(config.apiKey);
   }
 
   /**
@@ -51,10 +53,10 @@ export class Translator {
   }
 
   /**
-   * 批量摘要内容
+   * 使用 DeepSeek Web Search 直接读取并摘要外链
    */
-  async summarizeContents(
-    contents: (string | null)[],
+  async summarizeUrls(
+    articles: Array<{ title: string; url?: string }>,
     maxLength: number = 300
   ): Promise<string[]> {
     if (!this.provider) {
@@ -63,28 +65,25 @@ export class Translator {
 
     const results: string[] = [];
 
-    for (let i = 0; i < contents.length; i++) {
-      const content = contents[i];
-      console.log(`  [${i + 1}/${contents.length}] 生成内容摘要...`);
+    for (let i = 0; i < articles.length; i++) {
+      const article = articles[i];
+      console.log(`  [${i + 1}/${articles.length}] 读取外链并生成摘要...`);
 
-      if (!content) {
-        results.push('暂无摘要');
+      if (!article.url) {
+        results.push(NO_EXTERNAL_LINK_DESCRIPTION);
         continue;
       }
 
       try {
-        const response = await this.provider.chatCompletion([
-          {
-            role: 'system',
-            content: `你是内容摘要助手。请用中文总结文章内容，控制在${maxLength}字以内。只返回摘要内容。`,
-          },
-          { role: 'user', content: content.substring(0, 5000) },
-        ], 0.3);
-
-        results.push(response.content.trim());
+        const summary = await this.provider.summarizeUrl(
+          article.url,
+          article.title,
+          maxLength
+        );
+        results.push(summary || EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION);
       } catch (error) {
-        console.warn(`  ⚠️  摘要失败: ${error}`);
-        results.push('暂无摘要');
+        console.warn(`  ⚠️  外链读取失败: ${error}`);
+        results.push(EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION);
       }
     }
 

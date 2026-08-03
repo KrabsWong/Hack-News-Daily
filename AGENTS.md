@@ -4,8 +4,8 @@ HackerNews Daily - 每日自动获取 HackerNews 热门文章，使用 AI 翻译
 
 ## 技术栈
 
-- 爬虫: Jina.ai Reader API (500 RPM)
-- LLM: DeepSeek (翻译和摘要)
+- 数据源: Hacker News Algolia API（热门文章和评论）
+- LLM: DeepSeek V4 Flash（外链读取、翻译和摘要）
 - 发布: GitHub + Telegram
 
 ## 命令
@@ -14,6 +14,7 @@ HackerNews Daily - 每日自动获取 HackerNews 热门文章，使用 AI 翻译
 npm run build     # 编译 TypeScript
 npm run dev       # 本地开发运行
 npm run start     # 运行编译后的代码
+npm test          # 运行测试
 npm run typecheck # 类型检查
 ```
 
@@ -25,8 +26,7 @@ npm run typecheck # 类型检查
 
 | 变量 | 必填 | 说明 |
 |------|------|------|
-| `JINA_API_KEY` | ✅ | Jina.ai Reader API Key |
-| `LLM_DEEPSEEK_API_KEY` | ✅ | DeepSeek API Key |
+| `LLM_DEEPSEEK_API_KEY` | ✅ | DeepSeek API Key（外链读取、翻译和摘要） |
 | `GITHUB_TOKEN` | ✅ | GitHub Token (repo 权限) |
 | `TARGET_REPO` | ✅ | 目标仓库 (owner/repo) |
 | `TELEGRAM_ENABLED` | ❌ | 是否启用 Telegram |

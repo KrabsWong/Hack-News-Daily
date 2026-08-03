@@ -1,7 +1,7 @@
 /**
  * 极简每日导出脚本
  * 
- * 使用 Jina.ai Reader API 爬取内容 + DeepSeek 翻译
+ * 使用 Hacker News API 获取数据 + DeepSeek 读取外链、翻译和摘要
  */
 
 import { config } from 'dotenv';
@@ -10,14 +10,91 @@ import { join } from 'path';
 config({ path: join(__dirname, '../../.env') });
 
 import { fetchTopStoriesByScore, fetchCommentsBatchFromAlgolia } from '../api';
-import { fetchArticlesWithJina } from '../services/articleFetcher';
-import { translator } from '../services/translator';
+import {
+  EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION,
+  NO_EXTERNAL_LINK_DESCRIPTION,
+  translator,
+} from '../services/translator';
 import { generateMarkdownContent } from '../services/markdownExporter';
 import { formatDateForDisplay, getPreviousDayBoundaries } from '../utils/date';
 import type { ProcessedStory } from '../types';
 
 const STORY_LIMIT = parseInt(process.env.HN_STORY_LIMIT || '30', 10);
 const SUMMARY_MAX_LENGTH = parseInt(process.env.SUMMARY_MAX_LENGTH || '300', 10);
+
+export interface DailyExportOutput {
+  processedStories: ProcessedStory[];
+  markdown: string;
+  date: string;
+  contentSuccess: number;
+}
+
+export async function generateDailyExport(
+  deepseekApiKey: string,
+  storyLimit: number = STORY_LIMIT,
+  summaryMaxLength: number = SUMMARY_MAX_LENGTH
+): Promise<DailyExportOutput | null> {
+  // 1. 获取文章列表
+  console.log('\n[1/3] 📥 获取 HackerNews 文章...');
+  const { start, end } = getPreviousDayBoundaries();
+  const stories = await fetchTopStoriesByScore(storyLimit, start, end);
+  console.log(`✓ 获取 ${stories.length} 篇文章`);
+
+  if (stories.length === 0) {
+    return null;
+  }
+
+  // 2. 获取评论
+  console.log('\n[2/3] 💬 获取评论...');
+  const commentsBatch = await fetchCommentsBatchFromAlgolia(stories, 3);
+  console.log('✓ 评论获取完成');
+
+  // 3. DeepSeek 读取外链、翻译和摘要
+  console.log('\n[3/3] 🤖 DeepSeek 读取外链、翻译和摘要...');
+  translator.init({ apiKey: deepseekApiKey });
+
+  console.log('  翻译标题...');
+  const titlesZh = await translator.translateTitles(stories.map(s => s.title));
+
+  console.log('  读取外链并生成内容摘要...');
+  const contentSummaries = await translator.summarizeUrls(
+    stories.map(story => ({ title: story.title, url: story.url })),
+    summaryMaxLength
+  );
+  const contentSuccess = contentSummaries.filter(summary =>
+    summary !== NO_EXTERNAL_LINK_DESCRIPTION &&
+    summary !== EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION
+  ).length;
+
+  console.log('  生成评论摘要...');
+  const commentSummaries = await translator.summarizeComments(
+    commentsBatch,
+    summaryMaxLength
+  );
+  console.log('✓ LLM 处理完成');
+
+  const processedStories: ProcessedStory[] = stories.map((story, i) => ({
+    rank: i + 1,
+    storyId: story.id,
+    titleEnglish: story.title,
+    titleChinese: titlesZh[i] || story.title,
+    url: story.url || `https://news.ycombinator.com/item?id=${story.id}`,
+    score: story.score,
+    time: formatDateForDisplay(new Date(story.time * 1000)),
+    timestamp: story.time * 1000,
+    description: contentSummaries[i] || '暂无摘要',
+    commentSummary: commentSummaries[i] || null,
+  }));
+
+  const date = formatDateForDisplay(new Date());
+
+  return {
+    processedStories,
+    markdown: generateMarkdownContent(processedStories, new Date()),
+    date,
+    contentSuccess,
+  };
+}
 
 async function main() {
   const startTime = Date.now();
@@ -28,15 +105,10 @@ async function main() {
   console.log('='.repeat(60));
 
   // 检查环境变量
-  const jinaApiKey = process.env.JINA_API_KEY;
   const deepseekApiKey = process.env.LLM_DEEPSEEK_API_KEY;
   const githubToken = process.env.GITHUB_TOKEN;
   const targetRepo = process.env.TARGET_REPO;
 
-  if (!jinaApiKey) {
-    console.error('❌ 未设置 JINA_API_KEY');
-    process.exit(1);
-  }
   if (!deepseekApiKey) {
     console.error('❌ 未设置 LLM_DEEPSEEK_API_KEY');
     process.exit(1);
@@ -47,73 +119,19 @@ async function main() {
   }
 
   try {
-    // 1. 获取文章列表
-    console.log('\n[1/5] 📥 获取 HackerNews 文章...');
-    const { start, end } = getPreviousDayBoundaries();
-    const stories = await fetchTopStoriesByScore(STORY_LIMIT, start, end);
-    console.log(`✓ 获取 ${stories.length} 篇文章`);
-
-    if (stories.length === 0) {
+    const output = await generateDailyExport(deepseekApiKey);
+    if (!output) {
       console.log('⚠️  无文章，退出');
       return;
     }
 
-    // 2. Jina.ai 爬取
-    console.log('\n[2/5] 🕷️  Jina.ai 爬取内容...');
-    const urls = stories.map(s => s.url || `https://news.ycombinator.com/item?id=${s.id}`);
-    const articleMetadata = await fetchArticlesWithJina(urls, jinaApiKey, 100);
-    const crawlSuccess = articleMetadata.filter(m => m.fullContent).length;
-    console.log(`✓ 爬取完成: ${crawlSuccess}/${stories.length}`);
+    const { processedStories, markdown, date, contentSuccess } = output;
 
-    // 3. 获取评论
-    console.log('\n[3/5] 💬 获取评论...');
-    const commentsBatch = await fetchCommentsBatchFromAlgolia(stories, 3);
-    console.log(`✓ 评论获取完成`);
-
-    // 4. DeepSeek 翻译和摘要
-    console.log('\n[4/5] 🤖 DeepSeek 翻译和摘要...');
-    
-    translator.init({ apiKey: deepseekApiKey });
-
-    console.log('  翻译标题...');
-    const titlesZh = await translator.translateTitles(stories.map(s => s.title));
-
-    console.log('  生成内容摘要...');
-    const contentSummaries = await translator.summarizeContents(
-      articleMetadata.map(m => m.fullContent),
-      SUMMARY_MAX_LENGTH
-    );
-
-    console.log('  生成评论摘要...');
-    const commentSummaries = await translator.summarizeComments(
-      commentsBatch,
-      SUMMARY_MAX_LENGTH
-    );
-
-    console.log(`✓ LLM 处理完成`);
-
-    // 5. 生成 Markdown 并发布
-    console.log('\n[5/5] 📝 发布...');
-
-    const processedStories: ProcessedStory[] = stories.map((story, i) => ({
-      rank: i + 1,
-      storyId: story.id,
-      titleEnglish: story.title,
-      titleChinese: titlesZh[i] || story.title,
-      url: story.url || `https://news.ycombinator.com/item?id=${story.id}`,
-      score: story.score,
-      time: formatDateForDisplay(new Date(story.time * 1000)),
-      timestamp: story.time * 1000,
-      description: contentSummaries[i] || '暂无摘要',
-      commentSummary: commentSummaries[i] || null,
-    }));
-
-    const today = formatDateForDisplay(new Date());
-    const markdown = generateMarkdownContent(processedStories, new Date());
+    console.log('\n[4/4] 📝 发布...');
 
     // 发布到 GitHub
     console.log('  发布到 GitHub...');
-    await pushToGitHub(markdown, today, {
+    await pushToGitHub(markdown, date, {
       GITHUB_TOKEN: githubToken,
       TARGET_REPO: targetRepo,
       TARGET_BRANCH: process.env.TARGET_BRANCH || 'main',
@@ -124,7 +142,7 @@ async function main() {
     if (process.env.TELEGRAM_ENABLED === 'true') {
       console.log('  发布到 Telegram...');
       try {
-        await publishToTelegram(markdown, today, processedStories);
+        await publishToTelegram(markdown, date, processedStories);
         console.log(`  ✓ Telegram 发布成功`);
       } catch (error) {
         console.error('  ⚠️  Telegram 发布失败:', error);
@@ -136,7 +154,7 @@ async function main() {
     console.log('\n' + '='.repeat(60));
     console.log(`✅ 完成！耗时: ${duration}s`);
     console.log(`   文章: ${processedStories.length} 篇`);
-    console.log(`   爬取: ${crawlSuccess}/${stories.length}`);
+    console.log(`   外链内容: ${contentSuccess}/${processedStories.length}`);
     console.log('='.repeat(60));
 
   } catch (error) {
@@ -220,9 +238,11 @@ async function publishToTelegram(
   }
 }
 
-main().catch(err => {
-  console.error('Fatal:', err);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    console.error('Fatal:', err);
+    process.exit(1);
+  });
+}
 
 export { main };

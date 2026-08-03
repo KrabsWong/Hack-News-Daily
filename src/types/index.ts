@@ -2,13 +2,6 @@
  * 类型定义
  */
 
-// 文章元数据
-export interface ArticleMetadata {
-  url: string;
-  description: string | null;
-  fullContent: string | null;
-}
-
 // LLM 相关类型
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';

@@ -1,18 +1,20 @@
 {
   "name": "hackernews-daily",
   "version": "5.0.0",
-  "description": "HackerNews daily export with Jina.ai crawler and DeepSeek LLM",
+  "description": "HackerNews daily export with DeepSeek web search, translation and summaries",
   "main": "dist/scripts/daily-export-simple.js",
   "scripts": {
     "build": "tsc",
     "start": "node dist/scripts/daily-export-simple.js",
     "dev": "tsx src/scripts/daily-export-simple.ts",
+    "preview": "tsx src/scripts/preview-daily.ts",
+    "test": "node --import tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "hackernews",
-    "jina-ai",
     "deepseek",
+    "web-search",
     "translation"
   ],
   "author": "",

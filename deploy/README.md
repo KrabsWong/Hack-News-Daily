@@ -127,8 +127,7 @@ tail -f /opt/hackernews-daily/logs/hackernews-daily.log
 
 | 变量 | 必填 | 说明 |
 |------|------|------|
-| `JINA_API_KEY` | ✅ | Jina.ai Reader API Key |
-| `LLM_DEEPSEEK_API_KEY` | ✅ | DeepSeek API Key |
+| `LLM_DEEPSEEK_API_KEY` | ✅ | DeepSeek API Key（外链读取、翻译和摘要） |
 | `GITHUB_TOKEN` | ✅ | GitHub Personal Access Token |
 | `TARGET_REPO` | ✅ | 目标仓库 (owner/repo) |
 | `TARGET_BRANCH` | ❌ | 分支 (默认 main) |
@@ -138,7 +137,6 @@ tail -f /opt/hackernews-daily/logs/hackernews-daily.log
 
 ## 获取 API Key
 
-- **Jina.ai**: https://jina.ai/reader/ (免费 500 RPM)
 - **DeepSeek**: https://platform.deepseek.com/
 - **GitHub Token**: https://github.com/settings/tokens (repo 权限)
 
