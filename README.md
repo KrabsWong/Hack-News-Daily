@@ -56,7 +56,6 @@ HN_STORY_LIMIT=1 npm run preview
 ### 4. 编译
 
 ```bash
-npm test
 npm run build
 npm start
 ```

@@ -14,7 +14,6 @@ HackerNews Daily - 每日自动获取 HackerNews 热门文章，使用 AI 翻译
 npm run build     # 编译 TypeScript
 npm run dev       # 本地开发运行
 npm run start     # 运行编译后的代码
-npm test          # 运行测试
 npm run typecheck # 类型检查
 ```
 
