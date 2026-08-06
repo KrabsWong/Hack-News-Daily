@@ -10,11 +10,7 @@ import { join } from 'path';
 config({ path: join(__dirname, '../../.env') });
 
 import { fetchTopStoriesByScore, fetchCommentsBatchFromAlgolia } from '../api';
-import {
-  EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION,
-  NO_EXTERNAL_LINK_DESCRIPTION,
-  translator,
-} from '../services/translator';
+import { translator } from '../services/translator';
 import { generateMarkdownContent } from '../services/markdownExporter';
 import { formatDateForDisplay, getDayBoundaries, getPreviousDayBoundaries } from '../utils/date';
 import type { ProcessedStory } from '../types';
@@ -28,6 +24,9 @@ export interface DailyExportOutput {
   date: string;
   sourceDate: string;
   contentSuccess: number;
+  originalContentCount: number;
+  alternativeContentCount: number;
+  unavailableContentCount: number;
 }
 
 export async function generateDailyExport(
@@ -67,10 +66,10 @@ export async function generateDailyExport(
     stories.map(story => ({ title: story.title, url: story.url })),
     summaryMaxLength
   );
-  const contentSuccess = contentSummaries.filter(summary =>
-    summary !== NO_EXTERNAL_LINK_DESCRIPTION &&
-    summary !== EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION
-  ).length;
+  const originalContentCount = contentSummaries.filter(summary => summary.source === 'original').length;
+  const alternativeContentCount = contentSummaries.filter(summary => summary.source === 'alternative').length;
+  const unavailableContentCount = contentSummaries.length - originalContentCount - alternativeContentCount;
+  const contentSuccess = originalContentCount + alternativeContentCount;
 
   console.log('  生成评论摘要...');
   const commentSummaries = await translator.summarizeComments(
@@ -88,7 +87,9 @@ export async function generateDailyExport(
     score: story.score,
     time: formatDateForDisplay(new Date(story.time * 1000)),
     timestamp: story.time * 1000,
-    description: contentSummaries[i] || '暂无摘要',
+    description: contentSummaries[i]?.description || '暂无摘要',
+    descriptionSource: contentSummaries[i]?.source || 'unavailable',
+    descriptionSourceUrls: contentSummaries[i]?.sourceUrls || [],
     commentSummary: commentSummaries[i] || null,
   }));
 
@@ -101,6 +102,9 @@ export async function generateDailyExport(
     date,
     sourceDate,
     contentSuccess,
+    originalContentCount,
+    alternativeContentCount,
+    unavailableContentCount,
   };
 }
 
@@ -133,7 +137,16 @@ async function main() {
       return;
     }
 
-    const { processedStories, markdown, date, sourceDate, contentSuccess } = output;
+    const {
+      processedStories,
+      markdown,
+      date,
+      sourceDate,
+      contentSuccess,
+      originalContentCount,
+      alternativeContentCount,
+      unavailableContentCount,
+    } = output;
 
     console.log('\n[4/4] 📝 发布...');
 
@@ -163,7 +176,10 @@ async function main() {
     console.log(`✅ 完成！耗时: ${duration}s`);
     console.log(`   数据日期: ${sourceDate} (UTC)`);
     console.log(`   文章: ${processedStories.length} 篇`);
-    console.log(`   外链内容: ${contentSuccess}/${processedStories.length}`);
+    console.log(`   摘要可用: ${contentSuccess}/${processedStories.length}`);
+    console.log(`   原文摘要: ${originalContentCount}`);
+    console.log(`   备选来源摘要: ${alternativeContentCount}`);
+    console.log(`   无可用内容: ${unavailableContentCount}`);
     console.log('='.repeat(60));
 
   } catch (error) {

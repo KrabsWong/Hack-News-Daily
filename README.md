@@ -123,9 +123,11 @@ src/
 - **DeepSeek**: https://platform.deepseek.com/ (新用户送额度)
 - **GitHub Token**: https://github.com/settings/tokens (需要 repo 权限)
 
-## 外链读取降级
+## 外链读取与备选来源
 
-外链内容通过 DeepSeek Responses API 的 Web Search 读取。帖子没有外链、DeepSeek 无法读取网页或 API 请求失败时，任务不会中断；对应文章会保留完整标题和链接，并在描述中显示无法获取内容的原因。
+外链内容优先通过 DeepSeek Responses API 的 Web Search 读取原始 URL。原始网页无法访问时，DeepSeek 可以根据已成功打开的相关公开报道生成备选摘要；生成结果会保留备选来源链接，并在日报页面中标注“原文不可用”，来源可按需展开查看。
+
+帖子没有外链、原始与备选网页都没有可读正文，或 API 请求失败时，任务不会中断；对应文章会保留完整标题和链接，并在描述中显示无法获取内容的原因。搜索片段、未成功打开的网页以及没有来源标记的模型文本不会作为摘要发布。
 
 ## License
 

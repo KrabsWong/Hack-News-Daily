@@ -3,7 +3,7 @@
  */
 
 import { DeepSeekProvider } from '../llm';
-import type { ChatMessage } from '../../types';
+import type { ChatMessage, DescriptionSource } from '../../types';
 
 export interface TranslatorConfig {
   apiKey: string;
@@ -11,6 +11,12 @@ export interface TranslatorConfig {
 
 export const NO_EXTERNAL_LINK_DESCRIPTION = '无法获取文章内容：该 Hacker News 帖子没有外链地址。';
 export const EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION = '无法获取文章内容：该外链无法访问或没有可用正文。';
+
+export interface ContentSummary {
+  description: string;
+  source: DescriptionSource;
+  sourceUrls: string[];
+}
 
 const PROCESS_NARRATION_PATTERNS = [
   /(?:通过|使用|调用|借助).*(?:DeepSeek|Web\s*Search|网页搜索|搜索工具|工具调用).*(?:读取|访问|搜索|检索|确认|获取|生成)/i,
@@ -90,38 +96,61 @@ export class Translator {
   }
 
   /**
-   * 使用 DeepSeek Web Search 直接读取并摘要外链
+   * 使用 DeepSeek Web Search 读取原文或已验证的备选来源并生成摘要
    */
   async summarizeUrls(
     articles: Array<{ title: string; url?: string }>,
     maxLength: number = 300
-  ): Promise<string[]> {
+  ): Promise<ContentSummary[]> {
     if (!this.provider) {
       throw new Error('Translator not initialized');
     }
 
-    const results: string[] = [];
+    const results: ContentSummary[] = [];
 
     for (let i = 0; i < articles.length; i++) {
       const article = articles[i];
       console.log(`  [${i + 1}/${articles.length}] 读取外链并生成摘要...`);
 
       if (!article.url) {
-        results.push(NO_EXTERNAL_LINK_DESCRIPTION);
+        results.push({
+          description: NO_EXTERNAL_LINK_DESCRIPTION,
+          source: 'no-external-link',
+          sourceUrls: [],
+        });
         continue;
       }
 
       try {
-        const summary = await this.provider.summarizeUrl(
+        const result = await this.provider.summarizeUrl(
           article.url,
           article.title,
           maxLength
         );
-        const cleanedSummary = summary ? cleanSummaryText(summary) : '';
-        results.push(cleanedSummary || EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION);
+        if (result) {
+          const cleanedSummary = cleanSummaryText(result.summary);
+          if (cleanedSummary) {
+            results.push({
+              description: cleanedSummary,
+              source: result.source,
+              sourceUrls: result.sourceUrls,
+            });
+            continue;
+          }
+        }
+
+        results.push({
+          description: EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION,
+          source: 'unavailable',
+          sourceUrls: [],
+        });
       } catch (error) {
         console.warn(`  ⚠️  外链读取失败: ${error}`);
-        results.push(EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION);
+        results.push({
+          description: EXTERNAL_CONTENT_UNAVAILABLE_DESCRIPTION,
+          source: 'unavailable',
+          sourceUrls: [],
+        });
       }
     }
 

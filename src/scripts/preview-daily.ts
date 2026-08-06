@@ -35,7 +35,10 @@ async function main(): Promise<void> {
   console.log(`✅ 预览完成：${output.processedStories.length} 篇文章`);
   console.log(`   数据日期：${output.sourceDate} (UTC)`);
   console.log(`   输出日期：${output.date}`);
-  console.log(`   成功读取外链：${output.contentSuccess}/${output.processedStories.length}`);
+  console.log(`   摘要可用：${output.contentSuccess}/${output.processedStories.length}`);
+  console.log(`   原文摘要：${output.originalContentCount}`);
+  console.log(`   备选来源摘要：${output.alternativeContentCount}`);
+  console.log(`   无可用内容：${output.unavailableContentCount}`);
   console.log('   未调用 GitHub 或 Telegram');
   console.log('='.repeat(60));
 }

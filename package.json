@@ -8,6 +8,7 @@
     "start": "node dist/scripts/daily-export-simple.js",
     "dev": "tsx src/scripts/daily-export-simple.ts",
     "preview": "tsx src/scripts/preview-daily.ts",
+    "test": "npm run build && node --test tests/*.test.js",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [

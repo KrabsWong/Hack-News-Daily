@@ -50,6 +50,8 @@ export interface Story {
 }
 
 // 处理后的文章
+export type DescriptionSource = 'original' | 'alternative' | 'unavailable' | 'no-external-link';
+
 export interface ProcessedStory {
   rank: number;
   storyId: number;
@@ -60,5 +62,7 @@ export interface ProcessedStory {
   time: string;
   timestamp: number;
   description: string;
+  descriptionSource: DescriptionSource;
+  descriptionSourceUrls: string[];
   commentSummary: string | null;
 }
