@@ -92,7 +92,7 @@ export async function generateDailyExport(
     commentSummary: commentSummaries[i] || null,
   }));
 
-  const date = targetDate || formatDateForDisplay(new Date());
+  const date = sourceDate;
   const markdownDate = new Date(`${date}T00:00:00.000Z`);
 
   return {
