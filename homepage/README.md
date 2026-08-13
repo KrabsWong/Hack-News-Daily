@@ -4,6 +4,7 @@
 
 - <https://tldr-24.krabs.wang>
 - <https://research.krabs.wang>
+- <https://chromewebstore.google.com/detail/read-it-1000-years-later/bpdledepfcohbimofppegfpdnadhabij>
 
 ## 本地预览
 
