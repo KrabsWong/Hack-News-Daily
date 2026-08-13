@@ -1,0 +1,213 @@
+:root {
+  color-scheme: light;
+  --canvas: #ffffff;
+  --ink: #171819;
+  --muted: #76797d;
+  --line: #d8d8d5;
+  --hover: #a53d20;
+  --focus: #3478c9;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --canvas: #171819;
+    --ink: #ececea;
+    --muted: #999b9d;
+    --line: #4a4b4c;
+    --hover: #e07a5f;
+    --focus: #79a9df;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-width: 320px;
+  min-height: 100vh;
+  min-height: 100svh;
+  margin: 0;
+  padding: max(1.25rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: "TsangerJinKai02", STKaiti, KaiTi, "PingFang SC", system-ui, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+main {
+  width: min(100%, 560px);
+  align-self: center;
+  justify-self: center;
+}
+
+.profile {
+  text-align: center;
+}
+
+.profile img {
+  display: block;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 0.7rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.profile .intro {
+  width: min(100%, 30em);
+  margin: 0.75rem auto 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.85;
+  text-align: left;
+  text-wrap: pretty;
+}
+
+nav {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2.8rem;
+  text-align: center;
+}
+
+.site-entry a {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--ink);
+  font-size: 1rem;
+  text-decoration-color: var(--line);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.28em;
+  touch-action: manipulation;
+  transition: color 140ms ease-out, text-decoration-color 140ms ease-out;
+}
+
+.site-entry a span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.site-entry p {
+  margin: 0.1rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+footer {
+  display: flex;
+  margin: 0 auto;
+  padding-top: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+footer a {
+  color: inherit;
+  text-underline-offset: 0.18em;
+}
+
+@media (hover: hover) {
+  .site-entry a:hover {
+    color: var(--hover);
+    text-decoration-color: var(--hover);
+  }
+
+  footer a:hover {
+    color: var(--ink);
+  }
+}
+
+@media (max-width: 520px) {
+  body {
+    padding-right: max(1.25rem, env(safe-area-inset-right));
+    padding-left: max(1.25rem, env(safe-area-inset-left));
+  }
+
+  main {
+    align-self: start;
+    margin-top: clamp(3.5rem, 9svh, 5rem);
+  }
+
+  .profile img {
+    width: 64px;
+    height: 64px;
+  }
+
+  .profile .intro {
+    width: 100%;
+    font-size: clamp(0.69rem, 3.2vw, 0.78rem);
+    line-height: 1.8;
+    letter-spacing: -0.015em;
+    text-align: center;
+    text-wrap: balance;
+  }
+
+  nav {
+    gap: 0.9rem;
+    margin-top: 2.25rem;
+  }
+
+  footer {
+    flex-wrap: wrap;
+    padding-top: 1rem;
+  }
+}
+
+@media (max-height: 620px) {
+  body {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .profile img {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 0.5rem;
+  }
+
+  nav {
+    gap: 0.65rem;
+    margin-top: 2rem;
+  }
+
+  footer {
+    padding-top: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
